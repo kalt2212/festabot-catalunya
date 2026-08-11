@@ -149,7 +149,7 @@ app.post("/internal/programs/sync", async (context) => {
 
 app.post("/telegram/webhook", async (context) => {
   const suppliedSecret = context.req.header("X-Telegram-Bot-Api-Secret-Token");
-  if (!suppliedSecret || suppliedSecret !== context.env.TELEGRAM_WEBHOOK_SECRET) {
+  if (!suppliedSecret || !secretsMatch(suppliedSecret, context.env.TELEGRAM_WEBHOOK_SECRET)) {
     return context.json({ ok: false }, 403);
   }
 
