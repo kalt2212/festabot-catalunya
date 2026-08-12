@@ -571,25 +571,31 @@ export async function handleUpdate(env: Env, update: TelegramUpdate): Promise<vo
 
 export async function sendDueReminders(env: Env): Promise<void> {
   const now = new Date();
-  const reminders = await claimDueReminders(env, now.toISOString());
-  for (const reminder of reminders) {
-    const url = reminder.event_url ? `\n<a href="${escapeHtml(reminder.event_url)}">Obrir la font oficial</a>` : "";
-    try {
-      await sendMessage(env, reminder.chat_id, `🔔 <b>Recordatori de festa</b>\n\n${escapeHtml(reminder.event_title)}${url}`);
-      await markReminderSent(env, reminder.id, reminder.claim_token);
-    } catch (error) {
-      const description = error instanceof Error ? error.message : String(error);
-      const telegramCode = error instanceof TelegramApiError ? (error.errorCode ?? error.httpStatus) : undefined;
-      const terminal = telegramCode === 400 || telegramCode === 403 || reminder.attempts >= 5;
-      if (terminal) {
-        await markReminderFailed(env, reminder.id, reminder.claim_token, description);
-      } else {
-        const requestedDelay = error instanceof TelegramApiError ? error.retryAfterSeconds : undefined;
-        const backoffSeconds = requestedDelay ?? Math.min(21_600, 300 * 2 ** Math.max(0, reminder.attempts - 1));
-        await markReminderRetry(env, reminder.id, reminder.claim_token, new Date(now.getTime() + backoffSeconds * 1000).toISOString(), description);
+  // ponytail: isolate the delivery pass from the daily cleanup so a transient
+  // D1 error here can't skip pruning or make the scheduled handler throw.
+  try {
+    const reminders = await claimDueReminders(env, now.toISOString());
+    for (const reminder of reminders) {
+      const url = reminder.event_url ? `\n<a href="${escapeHtml(reminder.event_url)}">Obrir la font oficial</a>` : "";
+      try {
+        await sendMessage(env, reminder.chat_id, `🔔 <b>Recordatori de festa</b>\n\n${escapeHtml(reminder.event_title)}${url}`);
+        await markReminderSent(env, reminder.id, reminder.claim_token);
+      } catch (error) {
+        const description = error instanceof Error ? error.message : String(error);
+        const telegramCode = error instanceof TelegramApiError ? (error.errorCode ?? error.httpStatus) : undefined;
+        const terminal = telegramCode === 400 || telegramCode === 403 || reminder.attempts >= 5;
+        if (terminal) {
+          await markReminderFailed(env, reminder.id, reminder.claim_token, description);
+        } else {
+          const requestedDelay = error instanceof TelegramApiError ? error.retryAfterSeconds : undefined;
+          const backoffSeconds = requestedDelay ?? Math.min(21_600, 300 * 2 ** Math.max(0, reminder.attempts - 1));
+          await markReminderRetry(env, reminder.id, reminder.claim_token, new Date(now.getTime() + backoffSeconds * 1000).toISOString(), description);
+        }
+        console.error("Reminder delivery failed", { terminal, attempt: reminder.attempts, error: description });
       }
-      console.error("Reminder delivery failed", { terminal, attempt: reminder.attempts, error: description });
     }
+  } catch (error) {
+    console.error("Reminder delivery pass failed", { error: String(error) });
   }
 
   if (now.getUTCHours() === 2 && now.getUTCMinutes() < 5) {
