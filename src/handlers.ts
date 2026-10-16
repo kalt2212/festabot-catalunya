@@ -343,7 +343,7 @@ async function handleCommand(env: Env, message: TelegramMessage, language: Langu
       const municipiEvents = await sendResults(env, message.chat.id, language, { ...nextSevenDaysWindow(), municipality: argument, limit: 1000 });
       if (municipiEvents.length > 0 && await resolveMunicipality(env, argument)) {
         await setHomeMunicipality(env, userId, argument);
-        await sendMessage(env, message.chat.id, labels.homeSet.replace("%MUNICIPI%", argument));
+        await sendMessage(env, message.chat.id, labels.homeSet.replace("%MUNICIPI%", escapeHtml(argument)));
       } else {
         await sendMessage(env, message.chat.id, labels.noResults);
       }
@@ -433,7 +433,7 @@ async function handleMessage(env: Env, message: TelegramMessage): Promise<void> 
     if (programDelivery !== "missing") {
       if (await resolveMunicipality(env, text)) {
         await setHomeMunicipality(env, userId, text);
-        await sendMessage(env, message.chat.id, labels.homeSet.replace("%MUNICIPI%", text));
+        await sendMessage(env, message.chat.id, labels.homeSet.replace("%MUNICIPI%", escapeHtml(text)));
       }
       return;
     }

@@ -56,10 +56,12 @@ describe("event ranking", () => {
       comarca: "Baix Camp",
       categories: [] as string[]
     };
+    // Match Socrata's local date-time format throughout. Date-only strings parse
+    // as UTC and otherwise fall outside this local window in negative offsets.
     const ranked = rankEvents([
-      { ...base, code: "1", title: "Exposició permanent", startsAt: "2025-01-01", endsAt: "2026-12-31" },
-      { ...base, code: "2", title: "Concert de Festa Major", startsAt: "2026-07-24", endsAt: "2026-07-24", categories: ["concerts"] },
-      { ...base, code: "3", title: "Data corrupta", startsAt: "2024-01-01", endsAt: "2924-01-01" }
+      { ...base, code: "1", title: "Exposició permanent", startsAt: "2025-01-01T00:00:00.000", endsAt: "2026-12-31T00:00:00.000" },
+      { ...base, code: "2", title: "Concert de Festa Major", startsAt: "2026-07-24T00:00:00.000", endsAt: "2026-07-24T00:00:00.000", categories: ["concerts"] },
+      { ...base, code: "3", title: "Data corrupta", startsAt: "2024-01-01T00:00:00.000", endsAt: "2924-01-01T00:00:00.000" }
     ], {
       start: "2026-07-24T00:00:00.000",
       end: "2026-07-26T23:59:59.999"

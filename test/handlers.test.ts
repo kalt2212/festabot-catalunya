@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   getEvents: vi.fn(),
   getOfficialProgramDocument: vi.fn(),
   getLanguage: vi.fn(),
+  setHomeMunicipality: vi.fn(),
   sendMessage: vi.fn(),
   sendPoll: vi.fn()
 }));
@@ -40,11 +41,12 @@ vi.mock("../src/repositories/users", () => ({
   ensureUser: vi.fn(),
   getLanguage: mocks.getLanguage,
   getUserPreferences: vi.fn(),
-  setHomeMunicipality: vi.fn(),
+  setHomeMunicipality: mocks.setHomeMunicipality,
   setLanguage: vi.fn()
 }));
 
 import { handleUpdate } from "../src/handlers";
+import { t } from "../src/i18n";
 
 const listEvent: EventItem = {
   code: "2026071300004",
@@ -159,6 +161,27 @@ describe("direct Festa Major program flow", () => {
       expect.anything(),
       10,
       expect.stringContaining("/programa Blanes")
+    );
+  });
+});
+
+describe("home municipality confirmation", () => {
+  it.each([
+    ["/municipi ", "ca"],
+    ["/municipio ", "es"],
+    ["", "ca"],
+    ["", "es"]
+  ] as const)("escapes only the displayed name for %s in %s", async (prefix, language) => {
+    const rawMunicipality = 'Blanes <>&"';
+    mocks.getLanguage.mockResolvedValue(language);
+
+    await handleUpdate({} as Env, message(`${prefix}${rawMunicipality}`));
+
+    expect(mocks.setHomeMunicipality).toHaveBeenCalledWith(expect.anything(), 42, rawMunicipality);
+    expect(mocks.sendMessage).toHaveBeenCalledWith(
+      expect.anything(),
+      10,
+      t(language).homeSet.replace("%MUNICIPI%", "Blanes &lt;&gt;&amp;&quot;")
     );
   });
 });
