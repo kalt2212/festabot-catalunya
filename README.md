@@ -10,7 +10,7 @@ En producción: [@FestaCatalunyaBot](https://t.me/FestaCatalunyaBot) · [estado 
 
 - `/avui [municipi]`: actividades de hoy.
 - `/capdesetmana [municipi]`: planes del próximo fin de semana.
-- `/aprop`: búsqueda por ubicación temporal, sin almacenarla.
+- `/aprop`: búsqueda por ubicación temporal o por el municipio guardado, respetando el radio configurado. Si no se puede localizar el municipio, solicita una ubicación.
 - `/municipi <nom>`: búsqueda para los próximos siete días.
 - `/concerts [municipi]`: música y conciertos.
 - `/festes [municipi]`: lista de fiestas o programa directo cuando se indica un municipio.
@@ -88,3 +88,4 @@ La ubicación compartida se usa solo en memoria para calcular distancias, se red
 
 - [Agenda Cultural de Catalunya](https://agenda.cultura.gencat.cat/)
 - [Dataset abierto](https://analisi.transparenciacatalunya.cat/d/rhpv-yr4f)
+- [Idescat: coordenadas municipales](https://www.idescat.cat/dev/api/emex/), indicadores f328/f329. La referencia municipal permite buscar también en municipios vecinos, sin depender de que haya eventos en el municipio guardado. La petición es común a todos los usuarios, se almacena en caché durante 24 horas y no incluye preferencias ni ubicaciones personales. [Condiciones de uso](https://www.idescat.cat/dev/api/).

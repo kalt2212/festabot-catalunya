@@ -7,6 +7,7 @@ import { claimDueReminders, cleanupReminders, createReminder, markReminderFailed
 import { cleanupProcessedUpdates } from "./repositories/updates";
 import { deleteUserData, ensureUser, getLanguage, getUserPreferences, setHomeMunicipality, setLanguage } from "./repositories/users";
 import { agendaSourceUrl, getEventByReference, getEvents, isEventReference, type AgendaQuery } from "./services/agenda";
+import { getMunicipalityCoordinates } from "./services/municipalities";
 import { getOfficialProgramDocument } from "./services/program-document";
 import { answerCallbackQuery, answerInlineQuery, editMessageText, sendMessage, sendPoll, TelegramApiError } from "./services/telegram";
 import type { Env, EventItem, Language, TelegramCallbackQuery, TelegramInlineQuery, TelegramMessage, TelegramUpdate } from "./types";
@@ -128,14 +129,22 @@ async function sendNearby(
   }
   const prefs = await getUserPreferences(env, userId);
   if (prefs.homeMunicipality) {
-    await sendMessage(env, chatId, labels.apropUsingHome.replace("%MUNICIPI%", prefs.homeMunicipality));
-    await sendResults(env, chatId, language, {
-      ...nextSevenDaysWindow(),
-      municipality: prefs.homeMunicipality,
-      radiusKm: prefs.radiusKm,
-      limit: 1000
-    });
-    return;
+    let homeOrigin: { latitude: number; longitude: number } | undefined;
+    try {
+      homeOrigin = await getMunicipalityCoordinates(prefs.homeMunicipality);
+    } catch (error) {
+      console.error("Municipality lookup failed", { error: String(error) });
+    }
+    if (homeOrigin) {
+      await sendMessage(env, chatId, labels.apropUsingHome.replace("%MUNICIPI%", escapeHtml(prefs.homeMunicipality)));
+      await sendResults(env, chatId, language, {
+        ...nextSevenDaysWindow(),
+        ...homeOrigin,
+        radiusKm: prefs.radiusKm,
+        limit: 1000
+      }, homeOrigin);
+      return;
+    }
   }
   await sendMessage(env, chatId, labels.askLocation, locationKeyboard(language));
 }
@@ -149,9 +158,6 @@ async function resolveMunicipality(env: Env, text: string): Promise<boolean> {
   const events = await getEvents({ ...nextSevenDaysWindow(), municipality: text, limit: 8 });
   return events.some((event) => event.municipality && municipalitySlug(event.municipality) === slug);
 }
-
-// P2 (parked): /aprop-home ignores radiusKm when no coordinates — getEvents does
-// exact-municipality filter. Functional (in-bounds events), not data-loss.
 
 function detailText(event: EventItem, language: Language): string {
   const labels = t(language);
